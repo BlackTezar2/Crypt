@@ -1,8 +1,7 @@
-from telegram import Update
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes
 from price_service import PriceService
 from chart_service import ChartService
-from keyboards import *
 from config import YUMY_EMOJIS
 import os
 import random
@@ -10,7 +9,7 @@ import random
 price_service = PriceService()
 chart_service = ChartService()
 
-# 🎭 جملات تصادفی Yumy
+# ... (YUMY_PHRASES و get_random_phrase مثل قبل)
 YUMY_PHRASES = {
     "greeting": [
         "Cheep cheep! I'm so happy to see you! {}",
@@ -54,7 +53,6 @@ def get_random_phrase(category):
     phrases = YUMY_PHRASES.get(category, ["Cheep! {}"])
     return random.choice(phrases).format(random.choice(["🐣", "💛", "✨", "🍯", "🐤"]))
 
-# 🎯 /start
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     greeting = get_random_phrase("greeting")
@@ -88,7 +86,6 @@ Stay cute, trade smart! {YUMY_EMOJIS['love']}
         parse_mode='Markdown'
     )
 
-# 💰 /price
 async def price_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     fetching_msg = get_random_phrase("fetching")
     msg = await update.message.reply_text(f"{fetching_msg}\n\n_Fetching live price..._", parse_mode='Markdown')
@@ -107,7 +104,6 @@ async def price_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     change = data['change_24h']
     mood = PriceService.get_market_mood(change)
 
-    # 🎨 ایموجی بر اساس تغییرات
     if change > 0:
         change_emoji = "🟢📈"
         change_sign = "+"
@@ -130,7 +126,7 @@ ${data['price']:,.0f} USD
 
 🕐 Updated: {data['timestamp'].strftime('%H:%M UTC')}
 
-_{YUMY_EMOJIS['love']} CryptYumy - Your cute crypto friend!_
+{YUMY_EMOJIS['love']} CryptYumy - Your cute crypto friend!
 """
     await msg.edit_text(
         message,
@@ -138,7 +134,6 @@ _{YUMY_EMOJIS['love']} CryptYumy - Your cute crypto friend!_
         parse_mode='Markdown'
     )
 
-# 📊 /chart
 async def chart_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = f"""
 {YUMY_EMOJIS['chart']} Choose Your Chart!
@@ -158,11 +153,7 @@ My tiny wings will draw it beautifully! {YUMY_EMOJIS['love']}
         parse_mode='Markdown'
     )
 
-# 🐣 /stats
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # اینجا می‌تونیم از دیتابیس آمار واقعی بگیریم
-    # برای MVP فعلاً آمار ساده نشون می‌دیم
-
     message = f"""
 {YUMY_EMOJIS['star']} Your CryptYumy Adventure!
 
@@ -189,7 +180,7 @@ Stay tuned for more fun! {YUMY_EMOJIS['magic']}
         parse_mode='Markdown'
     )
 
-# 🔘 هندلر دکمه‌ها
+# 🔘 هندلر دکمه‌ها - فیکس شده!
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -204,7 +195,9 @@ Welcome back to CryptYumy!
 What would you like to do today?
 
 💰 Check live Bitcoin price
-📊 View beautiful charts
+📊 View beautiful char
+
+ts
 🐣 See your stats
 
 Choose an option below! {YUMY_EMOJIS['wink']}
@@ -291,8 +284,7 @@ Let's grow together! {YUMY_EMOJIS['love']}
             message,
             reply_markup=get_back_keyboard(),
             parse_mode='Markdown'
-
-)
+        )
 
     elif query.data == "stats":
         message = f"""
@@ -334,16 +326,19 @@ You're my favorite human! {YUMY_EMOJIS['love']}
         if chart_path and os.path.exists(chart_path):
             chart_msg = get_random_phrase("chart_ready")
 
+            # 🎯 فیکس: ارسال عکس با دکمه‌های اینلاین روی caption
             with open(chart_path, 'rb') as photo:
                 await query.message.reply_photo(
                     photo=photo,
                     caption=f"{chart_msg}\n\n📊 CryptYumy Chart - {period_name}\n\n_Hand-drawn with love by your favorite chick!_ {YUMY_EMOJIS['love']}",
-                    reply_markup=get_chart_keyboard(),
+                    reply_markup=get_chart_keyboard(),  # ✅ دکمه‌ها روی عکس!
                     parse_mode='Markdown'
                 )
 
+            # پاک کردن پیام "در حال ساخت..."
             await query.delete_message()
 
+            # پاک کردن فایل
             if os.path.exists(chart_path):
                 os.remove(chart_path)
         else:
@@ -354,7 +349,6 @@ You're my favorite human! {YUMY_EMOJIS['love']}
                 parse_mode='Markdown'
             )
 
-# ⚠️ هندلر خطا
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f"Error: {context.error}")
 
