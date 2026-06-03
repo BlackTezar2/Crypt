@@ -9,15 +9,15 @@ import os
 import time
 
 class ChartService:
-    def _init__(self):
+    def __init__(self):
         self.zard = '#FFD700'
         self.zard_light = '#FFF4B8'
         self.zard_glow = '#FFE566'
         self.abi_sky = '#87CEEB'
         self.abi_pastel = '#B3E5FC'
-        self.bg_color = '#FFFDF5'
-        self.card_color = '#FFFFFF'
-        self.text_dark = '#2C3E50'
+        self.bg_color = '#FFFDF5'        # ✅ این هست
+        self.card_color = '#FFFFFF'      # ✅ این هست
+        self.text_dark = '#2C3E50'       # ✅ این هست
 
     def get_historical_data(self, period="1d"):
         """دریافت داده‌های تاریخی از CoinGecko"""
@@ -74,6 +74,7 @@ class ChartService:
             plt.rcParams['font.family'] = 'DejaVu Sans'
             plt.rcParams['font.size'] = 10
 
+            # 🎨 استفاده از self
             fig, ax = plt.subplots(figsize=(12, 7), facecolor=self.bg_color)
             ax.set_facecolor(self.card_color)
 
