@@ -1,7 +1,8 @@
-from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram import Update
 from telegram.ext import ContextTypes
 from price_service import PriceService
 from chart_service import ChartService
+from keyboards import get_start_keyboard, get_chart_keyboard, get_back_keyboard
 from config import YUMY_EMOJIS
 import os
 import random
@@ -9,50 +10,38 @@ import random
 price_service = PriceService()
 chart_service = ChartService()
 
-# ... (YUMY_PHRASES و get_random_phrase مثل قبل)
+# 🎭 جملات تصادفی Yumy
 YUMY_PHRASES = {
     "greeting": [
         "Cheep cheep! I'm so happy to see you! {}",
         "Oh! A human friend! Hello hello! {}",
         "Yay! Someone woke me up! {}",
-        "Peep peep! I was just dreaming about Bitcoin! {}",
-        "Welcome welcome! My little chicken heart is excited! {}",
     ],
     "fetching": [
         "Let me check my magic crystal ball... {}",
         "Asking the Bitcoin gods... {}",
         "Running to check the charts! Wait here! {}",
-        "My chicken brain is calculating... {}",
-        "Peeking at the market for you... {}",
     ],
     "chart_ready": [
         "Ta-da! Here's your beautiful chart! {}",
         "I drew this with my tiny wings! {}",
         "A masterpiece from your favorite chick! {}",
-        "Chart fresh from the nest! {}",
-        "Look at those golden lines! So pretty! {}",
     ],
     "error": [
         "Oopsies! My chicken brain froze! {}",
         "Oh no! The internet worms are slow today! {}",
         "Peep... something went wrong... {}",
-        "I'm just a baby chick! Don't be mad! {}",
-        "The market is so crazy, even I got confused! {}",
-    ],
-    "stats": [
-        "Look how much we've grown together! {}",
-        "Your adventure with me so far! {}",
-        "We make a great team, human! {}",
     ],
     "about": [
         "I'm Yumy, a baby chick who loves Bitcoin! I was born to make crypto fun and cute! No scary charts, no complicated words. Just a friendly chick helping you understand the crypto world! I might not always be right, but I'll always be honest and adorable! {}",
-    ]
+    ],
 }
 
 def get_random_phrase(category):
     phrases = YUMY_PHRASES.get(category, ["Cheep! {}"])
     return random.choice(phrases).format(random.choice(["🐣", "💛", "✨", "🍯", "🐤"]))
 
+# 🎯 /start
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     greeting = get_random_phrase("greeting")
@@ -86,6 +75,7 @@ Stay cute, trade smart! {YUMY_EMOJIS['love']}
         parse_mode='Markdown'
     )
 
+# 💰 /price
 async def price_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     fetching_msg = get_random_phrase("fetching")
     msg = await update.message.reply_text(f"{fetching_msg}\n\n_Fetching live price..._", parse_mode='Markdown')
@@ -134,6 +124,7 @@ ${data['price']:,.0f} USD
         parse_mode='Markdown'
     )
 
+# 📊 /chart
 async def chart_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = f"""
 {YUMY_EMOJIS['chart']} Choose Your Chart!
@@ -153,6 +144,7 @@ My tiny wings will draw it beautifully! {YUMY_EMOJIS['love']}
         parse_mode='Markdown'
     )
 
+# 🐣 /stats
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = f"""
 {YUMY_EMOJIS['star']} Your CryptYumy Adventure!
@@ -180,11 +172,12 @@ Stay tuned for more fun! {YUMY_EMOJIS['magic']}
         parse_mode='Markdown'
     )
 
-# 🔘 هندلر دکمه‌ها - فیکس شده!
+# 🔘 هندلر دکمه‌ها
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
+    # 🎯 منوی اصلی
     if query.data == "start":
         greeting = get_random_phrase("greeting")
         message = f"""
@@ -195,32 +188,48 @@ Welcome back to CryptYumy!
 What would you like to do today?
 
 💰 Check live Bitcoin price
-📊 View beautiful char
-
-ts
+📊 View beautiful charts
 🐣 See your stats
 
 Choose an option below! {YUMY_EMOJIS['wink']}
 """
-        await query.edit_message_text(
-            message,
-            reply_markup=get_start_keyboard(),
-            parse_mode='Markdown'
-        )
+        # 🎯 فیکس: اگه عکسه، پیام جدید بفرست
+        if query.message.photo:
+            await query.message.reply_text(
+                message,
+                reply_markup=get_start_keyboard(),
+                parse_mode='Markdown'
+            )
+        else:
+            await query.edit_message_text(
+                message,
+                reply_markup=get_start_keyboard(),
+                parse_mode='Markdown'
+            )
 
+    # 💰 قیمت
     elif query.data == "price":
         fetching_msg = get_random_phrase("fetching")
-        await query.edit_message_text(
-            f"{fetching_msg}\n\n_Fetching the latest price..._",
-            parse_mode='Markdown'
-        )
+
+        # 🎯 فیکس: اگه عکسه، پیام جدید
+        if query.message.photo:
+            msg = await query.message.reply_text(
+                f"{fetching_msg}\n\n_Fetching..._",
+                parse_mode='Markdown'
+            )
+        else:
+            await query.edit_message_text(
+                f"{fetching_msg}\n\n_Fetching..._",
+                parse_mode='Markdown'
+            )
+            msg = query.message
 
         data = price_service.get_btc_price()
 
         if not data:
             error_msg = get_random_phrase("error")
-            await query.edit_message_text(
-                f"{error_msg}\n\n_Sorry! Try again in a bit!_",
+            await msg.edit_text(
+                f"{error_msg}\n\n_Sorry! Try again!_",
                 reply_markup=get_back_keyboard(),
                 parse_mode='Markdown'
             )
@@ -228,37 +237,29 @@ Choose an option below! {YUMY_EMOJIS['wink']}
 
         change = data['change_24h']
         mood = PriceService.get_market_mood(change)
-
-        if change > 0:
-            change_emoji = "🟢📈"
-            change_sign = "+"
-        else:
-            change_emoji = "🔴📉"
-            change_sign = ""
+        change_sign = "+" if change >= 0 else ""
 
         message = f"""
 {YUMY_EMOJIS['price']} Bitcoin Price
 
 ${data['price']:,.0f} USD
-{change_emoji} {change_sign}{change:.2f}% (24h)
+{change_sign}{change:.2f}% (24h)
 
 {mood}
 
-📊 24 Hour Stats:
-🔺 Highest: ${data['high_24h']:,.0f}
-🔻 Lowest: ${data['low_24h']:,.0f}
-📦 Volume: {data['volume_24h']:,.0f} BTC
+📊 24h Stats:
+🔺 High: ${data['high_24h']:,.0f}
+🔻 Low: ${data['low_24h']:,.0f}
 
-🕐 Updated: {data['timestamp'].strftime('%H:%M UTC')}
-
-{YUMY_EMOJIS['love']} CryptYumy - Stay cute, trade smart!
+{YUMY_EMOJIS['love']} CryptYumy - Stay cute!
 """
-        await query.edit_message_text(
+        await msg.edit_text(
             message,
             reply_markup=get_back_keyboard(),
             parse_mode='Markdown'
         )
 
+    # ℹ️ درباره
     elif query.data == "about":
         about_text = get_random_phrase("about")
         message = f"""
@@ -266,26 +267,22 @@ ${data['price']:,.0f} USD
 
 {about_text}
 
-My Promise to You:
-✨ I'll always be honest
-📊 I'll make pretty charts
-💛 I'll keep learning
-🆓 I'll stay FREE forever!
-
-Coming Soon:
-🧠 AI Predictions
-🎙️ Voice Messages
-🏆 XP & Achievements
-👥 Friend System
-
 Let's grow together! {YUMY_EMOJIS['love']}
 """
-        await query.edit_message_text(
-            message,
-            reply_markup=get_back_keyboard(),
-            parse_mode='Markdown'
-        )
+        if query.message.photo:
+            await query.message.reply_text(
+                message,
+                reply_markup=get_back_keyboard(),
+                parse_mode='Markdown'
+            )
+        else:
+            await query.edit_message_text(
+                message,
+                reply_markup=get_back_keyboard(),
+                parse_mode='Markdown'
+            )
 
+    # 📊 آمار
     elif query.data == "stats":
         message = f"""
 {YUMY_EMOJIS['star']} Your Adventure!
@@ -295,74 +292,78 @@ Let's grow together! {YUMY_EMOJIS['love']}
 📊 Charts: {random.randint(5, 50)}
 💰 Prices: {random.randint(10, 100)}
 🔥 Days: {random.randint(1, 30)}
-💛 Bond: Growing!
-
-{YUMY_EMOJIS['magic']} Coming Soon:
-✨ XP System
-🎯 Daily Quests
-🏅 Achievements
 
 You're my favorite human! {YUMY_EMOJIS['love']}
 """
-        await query.edit_message_text(
-            message,
-            reply_markup=get_back_keyboard(),
-            parse_mode='Markdown'
-        )
+        if query.message.photo:
+            await query.message.reply_text(
+                message,
+                reply_markup=get_back_keyboard(),
+                parse_mode='Markdown'
+            )
+        else:
+            await query.edit_message_text(
+                message,
+                reply_markup=get_back_keyboard(),
+                parse_mode='Markdown'
+            )
 
+    # 📊 چارت‌ها
     elif query.data.startswith("chart_"):
         period = query.data.replace("chart_", "")
         period_names = {"1d": "24 Hours", "5d": "5 Days", "1mo": "1 Month"}
         period_name = period_names.get(period, period)
 
         fetching_msg = get_random_phrase("fetching")
-        await query.edit_message_text(
-            f"{fetching_msg}\n\n_Drawing your {period_name} chart..._",
-            parse_mode='Markdown'
-        )
+
+        # 🎯 فیکس: اگه عکسه، پیام جدید بفرست
+        if query.message.photo:
+            msg = await query.message.reply_text(
+                f"{fetching_msg}\n\n_Drawing {period_name} chart..._",
+                parse_mode='Markdown'
+            )
+        else:
+            await query.edit_message_text(
+                f"{fetching_msg}\n\n_Drawing {period_name} chart..._",
+                parse_mode='Markdown'
+            )
+            msg = query.message
 
         chart_path = chart_service.generate_chart(period)
 
         if chart_path and os.path.exists(chart_path):
             chart_msg = get_random_phrase("chart_ready")
 
-            # 🎯 فیکس: ارسال عکس با دکمه‌های اینلاین روی caption
+            # ارسال عکس با دکمه
             with open(chart_path, 'rb') as photo:
-                await query.message.reply_photo(
+                await msg.reply_photo(
                     photo=photo,
-                    caption=f"{chart_msg}\n\n📊 CryptYumy Chart - {period_name}\n\n_Hand-drawn with love by your favorite chick!_ {YUMY_EMOJIS['love']}",
-                    reply_markup=get_chart_keyboard(),  # ✅ دکمه‌ها روی عکس!
+                    caption=f"{chart_msg}\n\n📊 CryptYumy Chart - {period_name}\n\n_Tap a button for another chart!_ {YUMY_EMOJIS['love']}",
+                    reply_markup=get_chart_keyboard(),
                     parse_mode='Markdown'
                 )
 
-            # پاک کردن پیام "در حال ساخت..."
-            await query.delete_message()
+            # پاک کردن پیام "در حال ساخت"
+            await msg.delete()
 
             # پاک کردن فایل
             if os.path.exists(chart_path):
                 os.remove(chart_path)
         else:
             error_msg = get_random_phrase("error")
-            await query.edit_message_text(
-                f"{error_msg}\n\n_My wings got tired drawing! Try again!_",
+            await msg.edit_text(
+                f"{error_msg}\n\n_Try again!_",
                 reply_markup=get_back_keyboard(),
                 parse_mode='Markdown'
             )
 
+# ⚠️ هندلر خطا
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f"Error: {context.error}")
 
-    error_message = f"""
-{YUMY_EMOJIS['sad']} Oopsies!
-
-My little chicken brain encountered an error!
-But don't worry, I'll be okay!
-
-Try again or come back later! {YUMY_EMOJIS['love']}
-"""
     if update and update.message:
         await update.message.reply_text(
-            error_message,
+            f"{YUMY_EMOJIS['sad']} Oopsies!\n\n_Try again later!_ {YUMY_EMOJIS['love']}",
             reply_markup=get_back_keyboard(),
             parse_mode='Markdown'
         )
