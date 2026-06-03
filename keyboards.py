@@ -1,6 +1,7 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 def get_start_keyboard():
+    """کیبورد استارت"""
     keyboard = [
         [
             InlineKeyboardButton("💰 Live Price", callback_data="price"),
@@ -18,6 +19,7 @@ def get_start_keyboard():
     return InlineKeyboardMarkup(keyboard)
 
 def get_chart_keyboard():
+    """کیبورد انتخاب چارت"""
     keyboard = [
         [
             InlineKeyboardButton("⚡ 24 Hours", callback_data="chart_1d"),
@@ -33,6 +35,7 @@ def get_chart_keyboard():
     return InlineKeyboardMarkup(keyboard)
 
 def get_back_keyboard():
+    """کیبورد برگشت - ✅ این باید باشه!"""
     keyboard = [
         [InlineKeyboardButton("🏠 Back to Menu", callback_data="start")]
     ]
