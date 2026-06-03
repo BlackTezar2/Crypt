@@ -4,8 +4,8 @@
 """
 
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler
-from crypt.config import BOT_TOKEN
-from crypt.handlers import *
+from config import BOT_TOKEN
+from handlers import *
 import sys
 
 def main():
